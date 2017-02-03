@@ -14,7 +14,11 @@ import android.widget.Toast;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.GoogleMap.OnMyLocationButtonClickListener;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -22,13 +26,16 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+
 
 public class MainActivity extends AppCompatActivity  implements
         OnMyLocationButtonClickListener,
         OnMapReadyCallback,
-        ActivityCompat.OnRequestPermissionsResultCallback,
-        GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener{
+        ConnectionCallbacks,
+        OnConnectionFailedListener,
+        ActivityCompat.OnRequestPermissionsResultCallback{
 
     // LogCat tag
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -55,6 +62,13 @@ public class MainActivity extends AppCompatActivity  implements
 
     private Location mLastLocation;
 
+    private LocationRequest mLocationRequest;
+
+    // Location updates intervals in sec
+    private static int UPDATE_INTERVAL = 10000; // 10 sec
+    private static int FATEST_INTERVAL = 5000; // 5 sec
+    private static int DISPLACEMENT = 10; // 10 meters
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,6 +77,13 @@ public class MainActivity extends AppCompatActivity  implements
         SupportMapFragment mapFragment =
                 (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+
+        if (checkPlayServices()) {
+
+            buildGoogleApiClient();
+            createLocationRequest();
+        }
     }
 
     @Override
@@ -158,20 +179,14 @@ public class MainActivity extends AppCompatActivity  implements
                 .addApi(LocationServices.API).build();
     }
 
-    @Override
-    public void onConnected(Bundle arg0) {
-        if(mMap.isMyLocationEnabled() == true){
-            if (checkPlayServices()) {
-
-                // Building the GoogleApi client
-                buildGoogleApiClient();
-            }
-
-            displayMyLocation();
-        }
-        // Once connected with google api, get the location
-
+    protected void createLocationRequest() {
+        mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(UPDATE_INTERVAL);
+        mLocationRequest.setFastestInterval(FATEST_INTERVAL);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setSmallestDisplacement(DISPLACEMENT);
     }
+
 
     private void displayMyLocation(){
 
@@ -185,7 +200,37 @@ public class MainActivity extends AppCompatActivity  implements
             MarkerOptions marker = new MarkerOptions().position(
                     new LatLng(latitude, longitude)).title("New Marker");
 
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
+                    new LatLng(latitude, longitude), 15);
+            mMap.animateCamera(cameraUpdate);
+            mMap.addMarker(marker);
+
         }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.connect();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
+    }
+
+
+    @Override
+    public void onConnected(Bundle arg0) {
+
+        // Once connected with google api, get the location
+        displayMyLocation();
+
     }
 
     @Override
@@ -198,4 +243,5 @@ public class MainActivity extends AppCompatActivity  implements
         Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = "
                 + result.getErrorCode());
     }
+
 }
