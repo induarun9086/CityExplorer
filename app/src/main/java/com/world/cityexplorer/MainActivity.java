@@ -2,6 +2,7 @@ package com.world.cityexplorer;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -28,6 +29,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
 import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 
 public class MainActivity extends AppCompatActivity  implements
@@ -35,7 +38,8 @@ public class MainActivity extends AppCompatActivity  implements
         OnMapReadyCallback,
         ConnectionCallbacks,
         OnConnectionFailedListener,
-        ActivityCompat.OnRequestPermissionsResultCallback{
+        ActivityCompat.OnRequestPermissionsResultCallback,
+        LocationListener{
 
     // LogCat tag
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -188,25 +192,7 @@ public class MainActivity extends AppCompatActivity  implements
     }
 
 
-    private void displayMyLocation(){
 
-        mLastLocation = LocationServices.FusedLocationApi
-                .getLastLocation(mGoogleApiClient);
-
-        if (mLastLocation != null) {
-            double latitude = mLastLocation.getLatitude();
-            double longitude = mLastLocation.getLongitude();
-
-            MarkerOptions marker = new MarkerOptions().position(
-                    new LatLng(latitude, longitude)).title("New Marker");
-
-            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
-                    new LatLng(latitude, longitude), 15);
-            mMap.animateCamera(cameraUpdate);
-            mMap.addMarker(marker);
-
-        }
-    }
 
     @Override
     protected void onStart() {
@@ -231,6 +217,36 @@ public class MainActivity extends AppCompatActivity  implements
         // Once connected with google api, get the location
         displayMyLocation();
 
+        startLocationUpdates();
+
+    }
+
+    private void displayMyLocation(){
+
+        mLastLocation = LocationServices.FusedLocationApi
+                .getLastLocation(mGoogleApiClient);
+
+        if (mLastLocation != null) {
+            double latitude = mLastLocation.getLatitude();
+            double longitude = mLastLocation.getLongitude();
+
+            MarkerOptions marker = new MarkerOptions().position(
+                    new LatLng(latitude, longitude)).title("New Marker");
+
+            CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
+                    new LatLng(latitude, longitude), 15);
+            mMap.animateCamera(cameraUpdate);
+            mMap.addMarker(marker);
+        }
+
+
+    }
+
+    protected void startLocationUpdates() {
+
+        LocationServices.FusedLocationApi.requestLocationUpdates(
+                mGoogleApiClient, mLocationRequest, this);
+
     }
 
     @Override
@@ -244,4 +260,15 @@ public class MainActivity extends AppCompatActivity  implements
                 + result.getErrorCode());
     }
 
+
+
+    @Override
+    public void onLocationChanged(Location location) {
+        Polyline line = mMap.addPolyline(new PolylineOptions()
+                .add(new LatLng(mLastLocation.getLatitude()
+                ,mLastLocation.getLongitude()), new LatLng(location.getLatitude(),location.getLongitude()))
+                .width(5)
+                .color(Color.RED));
+        mLastLocation = location;
+    }
 }
